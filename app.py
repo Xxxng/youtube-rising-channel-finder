@@ -88,7 +88,10 @@ if st.button("검색 시작"):
                     for v in video_response.get("items", []):
                         video_data[v["id"]] = {
                             "title": v["snippet"]["title"],
+                            "thumbnail": v["snippet"]["thumbnails"]["medium"]["url"],
                             "viewCount": int(v["statistics"].get("viewCount", 0)),
+                            "likeCount": int(v["statistics"].get("likeCount", 0)),
+                            "commentCount": int(v["statistics"].get("commentCount", 0)),
                             "channelId": v["snippet"]["channelId"],
                             "channelTitle": v["snippet"]["channelTitle"],
                             "publishedAt": v["snippet"]["publishedAt"]
@@ -113,54 +116,55 @@ if st.button("검색 시작"):
                         views = info["viewCount"]
                         
                         # 상승세 조건 체크
-                        # 1. 최대 구독자 수 조건
-                        # 2. 최소 조회수 조건
                         if subs <= max_subs and views >= min_views:
-                            # 3. 배수 계산 (분모가 0인 경우 처리)
                             ratio = round(views / subs, 2) if subs > 0 else views
                             
                             if ratio >= min_ratio:
                                 results.append({
-                                    "채널명": info["channelTitle"],
-                                    "영상 제목": info["title"],
-                                    "구독자 수": subs,
-                                    "조회수": views,
-                                    "조회수 비율(배)": ratio,
-                                    "업로드일": info["publishedAt"][:10],
-                                    "영상 링크": f"https://www.youtube.com/watch?v={vid}",
-                                    "채널 링크": f"https://www.youtube.com/channel/{info['channelId']}"
+                                    "id": vid,
+                                    "channelTitle": info["channelTitle"],
+                                    "title": info["title"],
+                                    "thumbnail": info["thumbnail"],
+                                    "subs": subs,
+                                    "views": views,
+                                    "likes": info["likeCount"],
+                                    "comments": info["commentCount"],
+                                    "ratio": ratio,
+                                    "date": info["publishedAt"][:10],
+                                    "url": f"https://www.youtube.com/watch?v={vid}"
                                 })
                     
                     if not results:
                         st.info("조건에 맞는 상승세 채널을 찾지 못했습니다. 필터를 조절해보세요.")
                     else:
-                        df = pd.DataFrame(results)
                         # 배수 기준으로 내림차순 정렬
-                        df = df.sort_values(by="조회수 비율(배)", ascending=False)
+                        results = sorted(results, key=lambda x: x["ratio"], reverse=True)
                         
                         st.success(f"총 {len(results)}개의 상승세 영상을 찾았습니다!")
                         
-                        # 표 출력 (링크를 클릭 가능하게 만들려면 st.dataframe 대신 st.data_editor나 html 사용 가능)
-                        st.dataframe(
-                            df,
-                            column_config={
-                                "영상 링크": st.column_config.LinkColumn("영상 링크"),
-                                "채널 링크": st.column_config.LinkColumn("채널 링크"),
-                                "조회수": st.column_config.NumberColumn(format="%d"),
-                                "구독자 수": st.column_config.NumberColumn(format="%d"),
-                            },
-                            use_container_width=True,
-                            hide_index=True
-                        )
-                        
-                        # CSV 다운로드 기능
-                        csv = df.to_csv(index=False, encoding='utf-8-sig')
-                        st.download_button(
-                            label="결과 CSV 다운로드",
-                            data=csv,
-                            file_name=f"rising_channels_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                            mime="text/csv",
-                        )
+                        # 카드 형태 UI 출력
+                        for res in results:
+                            with st.container():
+                                col1, col2 = st.columns([1, 2])
+                                
+                                with col1:
+                                    st.image(res["thumbnail"], use_container_width=True)
+                                
+                                with col2:
+                                    st.subheader(res["title"])
+                                    st.write(f"📺 **채널**: {res['channelTitle']} | 📅 **업로드**: {res['date']}")
+                                    
+                                    m1, m2, m3, m4 = st.columns(4)
+                                    m1.metric("조회수", f"{res['views']:,}")
+                                    m2.metric("구독자", f"{res['subs']:,}")
+                                    m3.metric("좋아요", f"{res['likes']:,}")
+                                    m4.metric("댓글", f"{res['comments']:,}")
+                                    
+                                    st.info(f"🔥 구독자 대비 조회수 **{res['ratio']}배** 폭발 중!")
+                                    
+                                    st.link_button("📺 영상 보러가기", res["url"], use_container_width=True)
+                                
+                                st.divider()
                         
         except HttpError as e:
             st.error(f"YouTube API 오류가 발생했습니다: {e}")
