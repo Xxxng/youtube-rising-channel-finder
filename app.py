@@ -33,14 +33,45 @@ lang_label = st.sidebar.selectbox("언어 선택", list(lang_options.keys()))
 lang_value = lang_options[lang_label]
 
 # 기간 설정
-days_back = st.sidebar.number_input("최근 몇 일 이내 영상?", min_value=1, max_value=365, value=30)
+date_options = {
+    "최근 1일": 1,
+    "최근 3일": 3,
+    "최근 7일": 7,
+    "최근 30일": 30,
+    "최근 90일": 90,
+    "최근 1년": 365
+}
+date_label = st.sidebar.selectbox("업로드 날짜", list(date_options.keys()), index=3) # 기본값 최근 30일
+days_back = date_options[date_label]
 published_after = (datetime.utcnow() - timedelta(days=days_back)).isoformat() + "Z"
 
 st.sidebar.divider()
 st.sidebar.title("📈 상승세 필터")
-max_subs = st.sidebar.number_input("최대 구독자 수", min_value=0, value=10000, step=1000)
-min_views = st.sidebar.number_input("최소 조회수", min_value=0, value=50000, step=5000)
-min_ratio = st.sidebar.number_input("구독자 대비 조회수 최소 배수 (예: 10배)", min_value=1.0, value=5.0, step=0.5)
+
+# 최대 구독자 수 드랍다운
+subs_options = {
+    "1만 명 이하": 10000,
+    "5만 명 이하": 50000,
+    "10만 명 이하": 100000,
+    "20만 명 이하": 200000,
+    "50만 명 이하": 500000,
+    "100만 명 이하": 1000000
+}
+subs_label = st.sidebar.selectbox("최대 구독자 수", list(subs_options.keys()), index=1) # 기본값 5만
+max_subs = subs_options[subs_label]
+
+# 최소 조회수 드랍다운
+views_options = {
+    "1만 회 이상": 10000,
+    "3만 회 이상": 30000,
+    "5만 회 이상": 50000,
+    "10만 회 이상": 100000,
+    "30만 회 이상": 300000,
+    "50만 회 이상": 500000,
+    "100만 회 이상": 1000000
+}
+views_label = st.sidebar.selectbox("최소 조회수", list(views_options.keys()), index=2) # 기본값 5만
+min_views = views_options[views_label]
 
 # --- 메인 화면 ---
 st.title("🚀 YouTube 상승세 채널 발굴 프로그램")
@@ -119,20 +150,19 @@ if st.button("검색 시작"):
                         if subs <= max_subs and views >= min_views:
                             ratio = round(views / subs, 2) if subs > 0 else views
                             
-                            if ratio >= min_ratio:
-                                results.append({
-                                    "id": vid,
-                                    "channelTitle": info["channelTitle"],
-                                    "title": info["title"],
-                                    "thumbnail": info["thumbnail"],
-                                    "subs": subs,
-                                    "views": views,
-                                    "likes": info["likeCount"],
-                                    "comments": info["commentCount"],
-                                    "ratio": ratio,
-                                    "date": info["publishedAt"][:10],
-                                    "url": f"https://www.youtube.com/watch?v={vid}"
-                                })
+                            results.append({
+                                "id": vid,
+                                "channelTitle": info["channelTitle"],
+                                "title": info["title"],
+                                "thumbnail": info["thumbnail"],
+                                "subs": subs,
+                                "views": views,
+                                "likes": info["likeCount"],
+                                "comments": info["commentCount"],
+                                "ratio": ratio,
+                                "date": info["publishedAt"][:10],
+                                "url": f"https://www.youtube.com/watch?v={vid}"
+                            })
                     
                     if not results:
                         st.info("조건에 맞는 상승세 채널을 찾지 못했습니다. 필터를 조절해보세요.")
